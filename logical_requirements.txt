@@ -1,0 +1,54 @@
+Goals
+
+Go from 3 channels to 1
+Downscale to 84x84 pixels
+Take max of previous 2 frames
+Repeat action 4 times
+Swap channels to first position
+Stack 4 frames
+Scale inputs
+
+
+gym.Wrapper
+gym.ObservationWrapper
+
+BreakoutNoFrameskip-v4
+PongNoFrameskip-v4
+
+
+
+What algorithm?
+
+Standard Q learning with experience replay and intermittient updates(2 networks)
+
+
+What data structures do we need?
+
+What model architecture do we need?
+210x160x128 >> 84x84x4 images after preprocessing
+average current and previous frames to get around flicker
+Separate output unit for each action
+
+Conv2d - 32 filters of 8x8 with a stride of 4 and a ReLU
+Conv2d - 64 filters of 4x4 with a stride of 3 and a ReLU
+FCL - 512 units
+Output - number of actions
+
+Clip rewards at 1 to negative 1
+
+RMSProp with minibatches of 32
+
+Epsilon greedy with epsilon annealed linearly from 1.0 to 0.1 over the first million frames, then fixed at 0.1
+
+Run for 50 million frames
+
+Select an action only every k frames to play more games while reducing runtime. k = 4
+
+
+
+epsilon = 0.05
+Two convolutional layers followed by two fully connected layers
+
+
+What hyper parameters do we need?
+
