@@ -3,7 +3,6 @@ import random
 import copy
 import torch.optim as optim
 import torch.nn.functional as F
-from model import save_the_model #TODO factor this out and make it part of the model class
 import time
 
 class ReplayMemory:
@@ -44,7 +43,7 @@ class Agent:
         self.target_model = copy.deepcopy(model).eval()
         self.epsilon = epsilon
         self.min_epsilon = min_epsilon
-        self.epsilon_decay = 1 - ((epsilon - min_epsilon) / nb_warmup) # Find the right value to take epsilon to min_epsilon over 10000 steps
+        self.epsilon_decay = 1 - (((epsilon - min_epsilon) / nb_warmup) * 2) # Find the right value to take epsilon to min_epsilon over 10000 steps
         self.batch_size = batch_size
         self.model.to(device)
         self.target_model.to(device)
@@ -107,8 +106,8 @@ class Agent:
             #TODO factor this out and make save_the_model part of the model class. ETC violation
 
             if epoch % 50 == 0:
-                save_the_model(self.model, 'models/latest.pt')
-                save_the_model(self.model, f"models/model_iter_{epoch}.pt")
+                self.model.save_the_model()
+                self.model.save_the_model(f"models/model_iter_{epoch}.pt")
 
         return stats
 
@@ -123,10 +122,11 @@ class Agent:
 
             done = False
 
-            while not done:
-                time.sleep(0.1)
-                print("one cycle test")
+            for _ in range(1000):
+                time.sleep(0.01)
                 action = self.get_action(state)
                 state, reward, done, info = env.step(action)
+                if done:
+                    break
 
 

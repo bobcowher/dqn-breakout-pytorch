@@ -18,7 +18,9 @@ class AtariNet(nn.Module):
 
         self.fc1 = nn.Linear(3136, 512)
 
-        self.output = nn.Linear(512, nb_actions)
+        self.fc2 = nn.Linear(512, 1024)
+
+        self.output = nn.Linear(1024, nb_actions)
 
     def forward(self, x):
         x = torch.Tensor(x)
@@ -30,27 +32,17 @@ class AtariNet(nn.Module):
         x = self.output(x)
         return x
 
+    def save_the_model(self, weights_filename='models/latest.pt'):
+        # Take the default weights filename(latest.pt) and save it
+        torch.save(self.state_dict(), weights_filename)
 
-def save_the_model(model, weights_filename=None):
-    torch.save(model.state_dict(), weights_filename)
 
-
-def build_the_model(weights_filename=None, test_run=False, display_summary=False, nb_actions=6):
-    model = AtariNet(nb_actions)
-
-    if weights_filename is not None:
+    def load_the_model(self, weights_filename='models/latest.pt'):
         try:
-            model.load_state_dict(torch.load(weights_filename))
+            self.load_state_dict(torch.load(weights_filename))
             print(f"Successfully loaded weights file {weights_filename}")
         except:
             print(f"No weights file available at {weights_filename}")
 
-    if test_run:
-        criterion = nn.L1Loss()
-        optimizer = torch.optim.Adam(model.parameters())
 
-    if display_summary:
-        print(model)
-
-    return model
 
