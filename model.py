@@ -16,11 +16,13 @@ class AtariNet(nn.Module):
 
         self.flatten = nn.Flatten()
 
-        self.fc1 = nn.Linear(3136, 512)
+        self.dropout = nn.Dropout(p=0.2)
 
-        self.fc2 = nn.Linear(512, 1024)
+        self.fc1 = nn.Linear(3136, 1024)
 
-        self.output = nn.Linear(1024, nb_actions)
+        self.fc2 = nn.Linear(1024, 2048)
+
+        self.output = nn.Linear(2048, nb_actions)
 
     def forward(self, x):
         x = torch.Tensor(x)
@@ -29,6 +31,9 @@ class AtariNet(nn.Module):
         x = self.relu(self.conv3(x))
         x = self.flatten(x)
         x = self.relu(self.fc1(x))
+        x = self.dropout(x)
+        x = self.relu(self.fc2(x))
+        x = self.dropout(x)
         x = self.output(x)
         return x
 

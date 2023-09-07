@@ -12,15 +12,23 @@ class ReplayMemory:
         self.memory = []
         self.position = 0
         self.device = device
+        self.memory_max_report = 0 # TODO remove later
 
 
     def insert(self, transition):
         transition = [item.to('cpu') for item in transition]
 
         if len(self.memory) < self.capacity:
-            self.memory.append(None)
-        self.memory[self.position] = transition
-        self.position = (self.position + 1) % self.capacity
+            self.memory.append(transition)
+        else:
+            # print(f"Removing memory item {self.memory[0]}")
+            self.memory.remove(self.memory[0])
+            self.memory.append(transition)
+            # print(f"New oldest item is {self.memory[0]}")
+
+        if len(self.memory) > self.memory_max_report:
+            print(f"Memory size currently {len(self.memory)}")
+            self.memory_max_report += 1000
 
     def sample(self, batch_size):
         assert self.can_sample(batch_size)
@@ -37,7 +45,7 @@ class ReplayMemory:
 
 class Agent:
 
-    def __init__(self, model, device='cpu', epsilon=1.0, min_epsilon=0.1, nb_warmup=10000, nb_actions=None, memory_capacity=10000, batch_size=32):
+    def __init__(self, model, device='cpu', epsilon=1.0, min_epsilon=0.1, nb_warmup=10000, nb_actions=None, memory_capacity=10000, batch_size=32, learning_rate=0.00025):
         self.memory = ReplayMemory(device=device, capacity=memory_capacity)
         self.model = model
         self.target_model = copy.deepcopy(model).eval()
@@ -50,7 +58,7 @@ class Agent:
         self.gamma = 0.99
         self.nb_actions = nb_actions
 
-        self.optimizer = optim.RMSprop(model.parameters(), lr=0.00025)
+        self.optimizer = optim.RMSprop(model.parameters(), lr=learning_rate)
 
         print(f"Starting epsilon is {self.epsilon}")
         print(f"Epsilon decay is {self.epsilon_decay}")
@@ -77,16 +85,19 @@ class Agent:
                 self.memory.insert([state, action, reward, done, next_state])
 
 
+                # QSA = Q-value, state, action
+
                 if self.memory.can_sample(self.batch_size):
                     state_b, action_b, reward_b, done_b, next_state_b = self.memory.sample(self.batch_size)
                     qsa_b = self.model(state_b).gather(1, action_b)
-                    next_qsa_b = self.target_model(next_state_b)
-                    next_qsa_b = torch.max(next_qsa_b, dim=-1, keepdim=True)[0]
+                    best_actions = self.model(next_state_b).argmax(dim=1, keepdims=True)
+                    next_qsa_b = self.target_model(next_state_b).gather(1, best_actions)
                     target_b = reward_b + ~done_b * self.gamma * next_qsa_b
                     loss = F.mse_loss(qsa_b, target_b)
                     self.model.zero_grad()
                     loss.backward()
                     self.optimizer.step()
+
 
                 state = next_state
                 ep_return += reward.item()
@@ -105,7 +116,7 @@ class Agent:
 
             #TODO factor this out and make save_the_model part of the model class. ETC violation
 
-            if epoch % 50 == 0:
+            if epoch % 100 == 0:
                 self.model.save_the_model()
                 self.model.save_the_model(f"models/model_iter_{epoch}.pt")
 
@@ -113,7 +124,7 @@ class Agent:
 
     def test(self, env):
 
-        self.epsilon = 0
+        # self.epsilon = 0
 
 
         for epoch in range(1, 3):
